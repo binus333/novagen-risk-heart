@@ -1,7 +1,7 @@
 """
 NovaGen Risk Studio
-Streamlit app around the five models from novagen.ipynb
-(Logistic Regression, KNN, Random Forest, Gradient Boosting, Voting Classifier).
+Streamlit app around the three models from novagen.ipynb
+(Logistic Regression, Random Forest, Gradient Boosting).
 
 Run:  streamlit run novagen_app.py
 Needs novagen_dataset.csv in the same folder.
@@ -14,18 +14,16 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-from sklearn.ensemble import (GradientBoostingClassifier, RandomForestClassifier,
-                              VotingClassifier)
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (accuracy_score, confusion_matrix, f1_score,
                              precision_score, recall_score, roc_auc_score, roc_curve)
 from sklearn.model_selection import train_test_split
-from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 APP_DIR = Path(__file__).parent
-DATA_PATH = APP_DIR / "novagen_dataset.csv"
+DATA_PATH = APP_DIR / "heart_risk.csv"
 
 TEAL, BLUE, ROSE, AMBER, GREEN = "#0D9488", "#2563EB", "#E11D48", "#F59E0B", "#16A34A"
 
@@ -46,8 +44,7 @@ NICE = {"Blood_Pressure": "Blood pressure", "Glucose_Level": "Glucose level",
         "Diet_Type": "Diet type", "Blood_Group": "Blood group"}
 nice = lambda c: NICE.get(c, c)
 
-MODEL_NAMES = ["Random Forest", "Gradient Boosting", "Voting Classifier",
-               "KNN", "Logistic Regression"]
+MODEL_NAMES = ["Random Forest", "Gradient Boosting", "Logistic Regression"]
 
 st.set_page_config(page_title="NovaGen Risk Studio", page_icon="🧬", layout="wide")
 st.markdown("""
@@ -80,7 +77,7 @@ def load_data() -> pd.DataFrame:
     return pd.read_csv(DATA_PATH)
 
 
-@st.cache_resource(show_spinner="Training the 5 models from your notebook (about 10 seconds)…")
+@st.cache_resource(show_spinner="Training the 3 models from your notebook (about 5 seconds)…")
 def train():
     df = load_data()
     X, y = df.drop("Target", axis=1), df["Target"]
@@ -90,16 +87,10 @@ def train():
     models = {
         "Logistic Regression": scaled(LogisticRegression(penalty="l2", solver="liblinear",
                                                          max_iter=1000)),
-        "KNN": scaled(KNeighborsClassifier(n_neighbors=5, metric="euclidean")),
         "Random Forest": RandomForestClassifier(n_estimators=200, max_depth=None,
                                                 random_state=42),
         "Gradient Boosting": GradientBoostingClassifier(n_estimators=150, learning_rate=0.1,
                                                         max_depth=3, random_state=42),
-        "Voting Classifier": scaled(VotingClassifier(
-            estimators=[("lr", LogisticRegression(max_iter=1000, solver="liblinear")),
-                        ("knn", KNeighborsClassifier(n_neighbors=5)),
-                        ("rf", RandomForestClassifier(n_estimators=200, random_state=42))],
-            voting="soft")),
     }
     proba, rows = {}, []
     for name, m in models.items():
@@ -176,7 +167,7 @@ with st.sidebar:
 model = art["models"][active]
 
 st.markdown("""<div class="hero"><h1>NovaGen Risk Studio</h1>
-<p>Explore the data, screen a patient with five machine-learning models, and see what drives each prediction.</p></div>""",
+<p>Explore the data, screen a patient with three machine-learning models, and see what drives each prediction.</p></div>""",
             unsafe_allow_html=True)
 
 # ============================================================ PAGE: explorer
@@ -337,7 +328,7 @@ elif page == "🩺 Risk assessment":
 
         allp = pd.Series({n: float(art["models"][n].predict_proba(row)[0, 1]) for n in MODEL_NAMES})
         flags = int((allp > thr).sum())
-        st.markdown(f"**Model consensus:** {flags} of 5 models flag high risk")
+        st.markdown(f"**Model consensus:** {flags} of {len(MODEL_NAMES)} models flag high risk")
         fig = px.bar(allp.sort_values(), x=allp.sort_values().values, y=allp.sort_values().index,
                      orientation="h", color=(allp.sort_values() > thr).map({True: "High", False: "Not high"}),
                      color_discrete_map={"High": ROSE, "Not high": TEAL})
@@ -386,7 +377,7 @@ elif page == "🩺 Risk assessment":
 # ============================================================ PAGE: comparison
 elif page == "📈 Model comparison":
     mt = art["metrics"]
-    st.markdown("##### All five models on the held-out test set (threshold 0.50, as in your notebook)")
+    st.markdown("##### All three models on the held-out test set (threshold 0.50, as in your notebook)")
     tbl = (mt * 100).reset_index()
     cfg = {c: st.column_config.ProgressColumn(c, min_value=0, max_value=100, format="%.1f%%")
            for c in ["Accuracy", "Recall", "Precision", "F1", "AUC"]}
