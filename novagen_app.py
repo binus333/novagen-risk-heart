@@ -162,7 +162,7 @@ with st.sidebar:
     st.write(f"Recall **{am['Recall']:.1%}** · Accuracy **{am['Accuracy']:.1%}**")
     st.caption(f"{len(df):,} records · {art['n_train']:,} train / {art['n_test']:,} test")
     st.divider()
-    st.caption("⚠️ Educational project. Predictions come from a statistical model trained on "
+    st.caption("⚠️Predictions come from a statistical model trained on "
                "this dataset and are not medical advice.")
 model = art["models"][active]
 
